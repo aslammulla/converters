@@ -9,12 +9,15 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var schemas map[string]interface{}
-var visited = map[string]bool{}
-var output strings.Builder
+var (
+	schemas map[string]interface{}
+	visited = map[string]bool{}
+	output  strings.Builder
+)
 
 func main() {
-	yamlFile, err := ioutil.ReadFile("input.yaml")
+	// Read YAML file
+	yamlFile, err := ioutil.ReadFile("openapi.yaml")
 	if err != nil {
 		panic(err)
 	}
@@ -27,21 +30,20 @@ func main() {
 
 	components, ok := data["components"].(map[string]interface{})
 	if !ok {
-		panic("Missing 'components'")
+		panic("Missing components")
 	}
 
 	schemaMap, ok := components["schemas"].(map[string]interface{})
 	if !ok {
-		panic("Missing 'components.schemas'")
+		panic("Missing components.schemas")
 	}
 	schemas = schemaMap
 
 	output.WriteString("package main\n\n")
 
-	// Generate structs for all schemas
-	for schemaName := range schemas {
-		if !visited[schemaName] {
-			parseSchema(schemaName)
+	for name := range schemas {
+		if !visited[name] {
+			parseSchema(name)
 		}
 	}
 
@@ -50,7 +52,7 @@ func main() {
 		panic(err)
 	}
 
-	fmt.Println("✅ models.go created successfully.")
+	fmt.Println("✅ models.go generated successfully.")
 }
 
 func parseSchema(name string) {
@@ -65,8 +67,8 @@ func parseSchema(name string) {
 	output.WriteString(fmt.Sprintf("type %s struct {\n", name))
 
 	if hasProps {
-		for fieldName, fieldValue := range props {
-			prop := fieldValue.(map[string]interface{})
+		for fieldName, fieldVal := range props {
+			prop := fieldVal.(map[string]interface{})
 			goType := resolveType(prop)
 			output.WriteString(fmt.Sprintf("\t%s %s `json:\"%s\"`\n", toCamelCase(fieldName), goType, fieldName))
 		}
@@ -82,30 +84,28 @@ func resolveType(prop map[string]interface{}) string {
 		return refName
 	}
 
-	if t, ok := prop["type"]; ok {
-		switch t {
-		case "string":
-			return "string"
-		case "integer":
-			return "int"
-		case "boolean":
-			return "bool"
-		case "number":
-			return "float64"
-		case "array":
-			if items, ok := prop["items"].(map[string]interface{}); ok {
-				return "[]" + resolveType(items)
-			}
-			return "[]interface{}"
-		case "object":
-			if additionalProps, ok := prop["additionalProperties"].(map[string]interface{}); ok {
-				return "map[string]" + resolveType(additionalProps)
-			}
-			return "map[string]interface{}"
+	switch prop["type"] {
+	case "string":
+		return "string"
+	case "integer":
+		return "int"
+	case "boolean":
+		return "bool"
+	case "number":
+		return "float64"
+	case "array":
+		if items, ok := prop["items"].(map[string]interface{}); ok {
+			return "[]" + resolveType(items)
 		}
+		return "[]interface{}"
+	case "object":
+		if additionalProps, ok := prop["additionalProperties"].(map[string]interface{}); ok {
+			return "map[string]" + resolveType(additionalProps)
+		}
+		return "map[string]interface{}"
+	default:
+		return "interface{}"
 	}
-
-	return "interface{}"
 }
 
 func getRefName(ref string) string {
@@ -113,8 +113,8 @@ func getRefName(ref string) string {
 	return parts[len(parts)-1]
 }
 
-func toCamelCase(input string) string {
-	words := strings.Split(input, "_")
+func toCamelCase(s string) string {
+	words := strings.Split(s, "_")
 	for i := range words {
 		words[i] = strings.Title(words[i])
 	}
