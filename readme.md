@@ -13,7 +13,7 @@ This repository contains two utilities to generate Go structs from input files:
 │   └── main.go
 │
 ├── yaml-to-go/
-│   ├── openapi.yaml
+│   ├── input.yaml
 │   └── main.go
 │
 └── models.go  # Output file (generated)
@@ -52,7 +52,7 @@ Reads an OpenAPI 3.0 YAML file and converts all schemas (in components.schemas) 
 
 🔹 Usage
 
-    Place your OpenAPI file in yaml-to-go/openapi.yaml
+    Place your OpenAPI file in yaml-to-go/input.yaml
     Run the converter:
 
 cd yaml-to-go
